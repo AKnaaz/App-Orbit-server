@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 dotenv.config();
 
@@ -55,13 +55,11 @@ async function run() {
     });
 
 
-
     // Add Product API (POST)
     app.post('/add-product', async (req, res) => {
       try {
         const productData = req.body;
 
-        // ⏱ Add timestamp
         productData.createdAt = new Date();
 
         const result = await techCollection.insertOne(productData);
@@ -77,7 +75,21 @@ async function run() {
       }
     });
 
-   
+
+    // Delete Product API
+    app.delete('/products/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+
+        const result = await techCollection.deleteOne({ _id: new ObjectId(id) });
+
+        res.send(result);
+      } catch (error) {
+        console.error('Delete error:', error);
+        res.status(500).send({ success: false, message: 'Failed to delete product' });
+      }
+    });
+
     
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
