@@ -31,7 +31,30 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
+    const db = client.db('techDB'); // database name
+    const techCollection = db.collection('techs'); //collection
 
+
+    // Add Product API (POST)
+    app.post('/add-product', async (req, res) => {
+      try {
+        const productData = req.body;
+
+        // ⏱ Add timestamp
+        productData.createdAt = new Date();
+
+        const result = await techCollection.insertOne(productData);
+
+        res.status(201).json({
+          success: true,
+          message: 'Product added successfully!',
+          insertedId: result.insertedId,
+        });
+      } catch (error) {
+        console.error('Error adding product:', error);
+        res.status(500).json({ success: false, message: 'Something went wrong.' });
+      }
+    });
 
    
     
