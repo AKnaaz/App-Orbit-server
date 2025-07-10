@@ -5,6 +5,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 dotenv.config();
 
+const stripe = require('stripe')(process.env.PAYMENT_GATEWAY_KEY);
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -33,6 +34,50 @@ async function run() {
 
     const db = client.db('techDB'); // database name
     const techCollection = db.collection('techs'); //collection
+    const usersCollection = db.collection('users'); //collection
+
+
+
+    // Add or update user by email
+    app.post('/user', async (req, res) => {
+      const user = req.body;
+      const email = user?.email;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const filter = { email: email };
+      const updateDoc = {
+        $setOnInsert: {
+          name: user.name,
+          photo: user.photo,
+          isSubscribed: user.isSubscribed || false,
+          createdAt: new Date()
+        }
+      };
+
+      const options = { upsert: true };
+      const result = await usersCollection.updateOne(filter, updateDoc, options);
+      res.status(200).json(result);
+    });
+
+
+    // Get specific user by email
+    app.get('/user/:email', async (req, res) => {
+      const email = req.params.email;
+      try {
+        const user = await db.collection('users').findOne({ email });
+        if (user) {
+          res.json(user);
+        } else {
+          res.status(404).json({ message: 'User not found' });
+        }
+      } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch user' });
+      }
+    });
+
 
 
     // Get Product API 
@@ -47,7 +92,7 @@ async function run() {
           .sort({ createdAt: -1 })  // newest first
           .toArray();
 
-        res.json(products);
+        res.send(products);
       } catch (error) {
         console.error('Error fetching products:', error);
         res.status(500).json({ message: 'Something went wrong' });
@@ -64,7 +109,7 @@ async function run() {
 
         const result = await techCollection.insertOne(productData);
 
-        res.status(201).json({
+        res.status(201).send({
           success: true,
           message: 'Product added successfully!',
           insertedId: result.insertedId,
@@ -89,6 +134,23 @@ async function run() {
         res.status(500).send({ success: false, message: 'Failed to delete product' });
       }
     });
+
+
+    // Stripe Payment API
+    app.post('/create-payment-intent', async (req, res) => {
+      const amountInCents = req.body.amountInCents
+      try {
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amountInCents,
+          currency: 'usd',
+          payment_method_types: ['card'],
+        });
+        res.json({clientSecret: paymentIntent.client_secret})
+      } catch (error) {
+        res.status(500).json({error: error.message})
+      }
+    });
+
 
     
     // Send a ping to confirm a successful connection
