@@ -35,6 +35,27 @@ async function run() {
     const techCollection = db.collection('techs'); //collection
 
 
+    // Get Product API 
+    app.get('/products', async (req, res) => {
+      const userEmail = req.query.email;
+
+      try {
+        const query = userEmail ? { ownerEmail: userEmail } : {};
+
+        const products = await techCollection
+          .find(query)
+          .sort({ createdAt: -1 })  // newest first
+          .toArray();
+
+        res.json(products);
+      } catch (error) {
+        console.error('Error fetching products:', error);
+        res.status(500).json({ message: 'Something went wrong' });
+      }
+    });
+
+
+
     // Add Product API (POST)
     app.post('/add-product', async (req, res) => {
       try {
