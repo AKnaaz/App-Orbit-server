@@ -78,6 +78,17 @@ async function run() {
       }
     });
 
+    // Patch user subscription status
+    app.patch('/user/:email', async (req, res) => {
+      const email = req.params.email;
+      const updateDoc = {
+        $set: {
+          isSubscribed: true
+        }
+      };
+      const result = await usersCollection.updateOne({ email }, updateDoc);
+      res.send(result);
+    });
 
 
     // Get Product API 
