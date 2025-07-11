@@ -132,6 +132,41 @@ async function run() {
     });
 
 
+    // Get Single Product by ID
+    app.get('/products/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+        const product = await techCollection.findOne({ _id: new ObjectId(id) });
+        if (product) {
+          res.send(product);
+        } else {
+          res.status(404).json({ message: "Product not found" });
+        }
+      } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch product' });
+      }
+    });
+
+
+    // Update Product API
+    app.patch('/products/:id', async (req, res) => {
+      const id = req.params.id;
+      const updatedData = { ...req.body };
+      delete updatedData._id;
+
+      try {
+        const result = await techCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updatedData }
+        );
+        res.send(result);
+      } catch (err) {
+        console.error('Update failed:', err);
+        res.status(500).json({ message: 'Update failed' });
+      }
+    });
+
+
     // Delete Product API
     app.delete('/products/:id', async (req, res) => {
       try {
