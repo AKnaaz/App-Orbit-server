@@ -182,6 +182,29 @@ async function run() {
     });
 
 
+    // PATCH /products/vote/:id
+    app.patch('/products/vote/:id', async (req, res) => {
+      const id = req.params.id;
+      const { email } = req.body;
+
+      const product = await techCollection.findOne({ _id: new ObjectId(id) });
+
+      if (product.voters?.includes(email)) {
+        return res.status(400).json({ message: "Already voted" });
+      }
+
+      const result = await techCollection.updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $inc: { votes: 1 },
+          $push: { voters: email }
+        }
+      );
+
+      res.send(result);
+    });
+
+
     // Stripe Payment API
     app.post('/create-payment-intent', async (req, res) => {
       const amountInCents = req.body.amountInCents
@@ -196,7 +219,6 @@ async function run() {
         res.status(500).json({error: error.message})
       }
     });
-
 
     
     // Send a ping to confirm a successful connection
