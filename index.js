@@ -364,31 +364,33 @@ async function run() {
     });
 
 
-    // Get only accepted products API with tag search support
+    // Get only accepted products API with tag search support and pagination
     app.get('/test-products/accepted', async (req, res) => {
       try {
-        const searchTerm = req.query.search; 
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 6;
+        const skip = (page - 1) * limit;
 
         const query = { status: 'accepted' };
-
-        if (searchTerm) {
-          query.tags = {
-            $elemMatch: { $regex: searchTerm, $options: 'i' } // case-insensitive search in tag array
-          };
-        }
 
         const products = await techCollection
           .find(query)
           .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
           .toArray();
 
-        res.send(products);
+        const total = await techCollection.countDocuments(query);
+
+        res.send({
+          products,
+          total
+        });
       } catch (err) {
-        res.status(500).json({ error: "Test fetch failed", reason: err.message });
+        console.error('Pagination error:', err);
+        res.status(500).json({ error: 'Failed to fetch accepted products' });
       }
     });
-
-
 
 
     // Stripe Payment API
