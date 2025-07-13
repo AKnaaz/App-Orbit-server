@@ -95,15 +95,44 @@ async function run() {
 
 
     // Get Product API 
+    // app.get('/products', async (req, res) => {
+    //   const userEmail = req.query.email;
+
+    //   try {
+    //     const query = userEmail ? { ownerEmail: userEmail } : {};
+
+    //     const products = await techCollection
+    //       .find(query)
+    //       .sort({ createdAt: -1 })  // newest first
+    //       .toArray();
+
+    //     res.send(products);
+    //   } catch (error) {
+    //     console.error('Error fetching products:', error);
+    //     res.status(500).json({ message: 'Something went wrong' });
+    //   }
+    // });
+
+
+    // Get Products API (all, by user email, or featured)
     app.get('/products', async (req, res) => {
       const userEmail = req.query.email;
+      const isFeatured = req.query.featured === 'true';
 
       try {
-        const query = userEmail ? { ownerEmail: userEmail } : {};
+        let query = {};
+
+        if (userEmail) {
+          query.ownerEmail = userEmail;
+        }
+
+        if (isFeatured) {
+          query.isFeatured = true;
+        }
 
         const products = await techCollection
           .find(query)
-          .sort({ createdAt: -1 })  // newest first
+          .sort({ createdAt: -1 }) // Newest first
           .toArray();
 
         res.send(products);
@@ -252,6 +281,53 @@ async function run() {
         res.status(500).json({ success: false, message: 'Failed to fetch reviews' });
       }
     });
+
+
+    // Featured Product Patch API
+    app.patch('/products/feature/:id', async (req, res) => {
+      const id = req.params.id;
+      try {
+        const result = await techCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { isFeatured: true } }
+        );
+        res.send(result);
+      } catch (err) {
+        res.status(500).json({ message: "Failed to mark as featured" });
+      }
+    });
+
+
+    // Featured Product Accept API
+    app.patch('/products/accept/:id', async (req, res) => {
+      const id = req.params.id;
+      try {
+        const result = await techCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { status: 'accepted' } }
+        );
+        res.send(result);
+      } catch (err) {
+        res.status(500).json({ message: "Failed to accept product" });
+      }
+    });
+
+
+    // Featured Product Reject API
+    app.patch('/products/reject/:id', async (req, res) => {
+      const id = req.params.id;
+      try {
+        const result = await techCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { status: 'rejected' } }
+        );
+        res.send(result);
+      } catch (err) {
+        res.status(500).json({ message: "Failed to reject product" });
+      }
+    });
+
+
 
 
 
