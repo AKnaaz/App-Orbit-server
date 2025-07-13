@@ -35,6 +35,8 @@ async function run() {
     const db = client.db('techDB'); // database name
     const techCollection = db.collection('techs'); //collection
     const usersCollection = db.collection('users'); //collection
+    const reportCollection = db.collection('reports'); //collection
+    const reviewsCollection = db.collection('reviews'); //collection
 
 
 
@@ -53,6 +55,7 @@ async function run() {
           name: user.name,
           photo: user.photo,
           isSubscribed: user.isSubscribed || false,
+          role: user.role || 'user', 
           createdAt: new Date()
         }
       };
@@ -203,6 +206,53 @@ async function run() {
 
       res.send(result);
     });
+
+
+    // Report API
+    app.post('/report', async (req, res) => {
+      try {
+        const reportData = req.body;
+        reportData.reportedAt = new Date();
+
+        const result = await reportCollection.insertOne(reportData);
+        res.status(201).json({ success: true, message: 'Report submitted', result });
+      } catch (error) {
+        console.error('Report error:', error);
+        res.status(500).json({ success: false, message: 'Failed to report product' });
+      }
+    });
+
+
+    // Add Review API
+    app.post('/reviews', async (req, res) => {
+      try {
+        const review = req.body;
+        review.createdAt = new Date();
+        const result = await reviewsCollection.insertOne(review);
+        res.status(201).json({ success: true, message: 'Review added successfully', insertedId: result.insertedId });
+      } catch (error) {
+        console.error('Error adding review:', error);
+        res.status(500).json({ success: false, message: 'Something went wrong.' });
+      }
+    });
+
+
+    // Get Reviews for a Product
+    app.get('/reviews/:productId', async (req, res) => {
+      try {
+        const { productId } = req.params;
+        const reviews = await reviewsCollection
+          .find({ productId })
+          .sort({ createdAt: -1 }) // latest first
+          .toArray();
+
+        res.status(200).json(reviews);
+      } catch (error) {
+        console.error('Error fetching reviews:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch reviews' });
+      }
+    });
+
 
 
     // Stripe Payment API
