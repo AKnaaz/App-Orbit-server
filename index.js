@@ -114,7 +114,7 @@ async function run() {
     // });
 
 
-    // Get Products API (all, by user email, or featured)
+    // Get Products API (all, by user email, featured or reported)
     app.get('/products', async (req, res) => {
       const userEmail = req.query.email;
       const isFeatured = req.query.featured === 'true';
@@ -248,6 +248,42 @@ async function run() {
       } catch (error) {
         console.error('Report error:', error);
         res.status(500).json({ success: false, message: 'Failed to report product' });
+      }
+    });
+
+
+    // Get All Reported Products
+    app.get('/reports', async (req, res) => {
+      try {
+        const reports = await reportCollection
+          .find()
+          .sort({ reportedAt: -1 }) // newest first
+          .toArray();
+        res.send(reports);
+      } catch (error) {
+        console.error('Error fetching reports:', error);
+        res.status(500).json({ message: 'Failed to fetch reports' });
+      }
+    });
+
+
+    // Report Delete API
+    app.delete('/reports/:productId', async (req, res) => {
+      const productId = req.params.productId;
+
+      try {
+        const productResult = await techCollection.deleteOne({ _id: new ObjectId(productId) });
+
+        const reportResult = await reportCollection.deleteMany({ productId });
+
+        res.send({
+          message: 'Product and its reports deleted successfully',
+          productDeleted: productResult.deletedCount,
+          reportsDeleted: reportResult.deletedCount
+        });
+      } catch (error) {
+        console.error('Error deleting reported product:', error);
+        res.status(500).json({ message: 'Failed to delete reported product' });
       }
     });
 
