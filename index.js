@@ -364,16 +364,31 @@ async function run() {
     });
 
 
-    // Get only accepted products API
+    // Get only accepted products API with tag search support
     app.get('/test-products/accepted', async (req, res) => {
       try {
+        const searchTerm = req.query.search; 
+
         const query = { status: 'accepted' };
-        const products = await techCollection.find(query).sort({ createdAt: -1 }).toArray();
+
+        if (searchTerm) {
+          query.tags = {
+            $elemMatch: { $regex: searchTerm, $options: 'i' } // case-insensitive search in tag array
+          };
+        }
+
+        const products = await techCollection
+          .find(query)
+          .sort({ createdAt: -1 })
+          .toArray();
+
         res.send(products);
       } catch (err) {
         res.status(500).json({ error: "Test fetch failed", reason: err.message });
       }
     });
+
+
 
 
     // Stripe Payment API
