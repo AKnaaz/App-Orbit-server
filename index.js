@@ -364,7 +364,16 @@ async function run() {
     });
 
 
-
+    // Get only accepted products API
+    app.get('/test-products/accepted', async (req, res) => {
+      try {
+        const query = { status: 'accepted' };
+        const products = await techCollection.find(query).sort({ createdAt: -1 }).toArray();
+        res.send(products);
+      } catch (err) {
+        res.status(500).json({ error: "Test fetch failed", reason: err.message });
+      }
+    });
 
 
     // Stripe Payment API
