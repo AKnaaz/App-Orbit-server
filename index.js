@@ -37,6 +37,7 @@ async function run() {
     const usersCollection = db.collection('users'); //collection
     const reportCollection = db.collection('reports'); //collection
     const reviewsCollection = db.collection('reviews'); //collection
+    const couponCollection = db.collection('coupons'); //collection
 
 
 
@@ -466,6 +467,77 @@ async function run() {
       } catch (err) {
         console.error('Pagination error:', err);
         res.status(500).json({ error: 'Failed to fetch accepted products' });
+      }
+    });
+
+
+    // Add new coupon
+    app.post('/coupons', async (req, res) => {
+      try {
+        const coupon = req.body;
+        coupon.createdAt = new Date();
+        const result = await couponCollection.insertOne(coupon);
+        res.status(201).json({ success: true, message: "Coupon added", insertedId: result.insertedId });
+      } catch (error) {
+        console.error('Error adding coupon:', error);
+        res.status(500).json({ success: false, message: 'Failed to add coupon' });
+      }
+    });
+
+
+    // Get all coupons
+    app.get('/coupons', async (req, res) => {
+      try {
+        const coupons = await couponCollection.find().sort({ createdAt: -1 }).toArray();
+        res.send(coupons);
+      } catch (error) {
+        console.error('Error fetching coupons:', error);
+        res.status(500).json({ message: 'Failed to fetch coupons' });
+      }
+    });
+
+
+    // Get single coupon by ID
+    app.get('/coupons/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+        const coupon = await couponCollection.findOne({ _id: new ObjectId(id) });
+        if (!coupon) return res.status(404).json({ message: 'Coupon not found' });
+        res.send(coupon);
+      } catch (error) {
+        console.error('Error getting coupon:', error);
+        res.status(500).json({ message: 'Failed to fetch coupon' });
+      }
+    });
+
+    
+    // Update coupon
+    app.put('/coupons/:id', async (req, res) => {
+      const { id } = req.params;
+      const updatedData = req.body;
+
+      try {
+        const result = await couponCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updatedData }
+        );
+
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ error: 'Failed to update coupon.' });
+      }
+    });
+
+
+    // Delete coupon
+    app.delete('/coupons/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+        const result = await couponCollection.deleteOne({ _id: new ObjectId(id) });
+        res.send(result);
+      } catch (error) {
+        console.error('Error deleting coupon:', error);
+        res.status(500).json({ message: 'Failed to delete coupon' });
       }
     });
 
