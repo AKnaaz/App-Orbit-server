@@ -51,11 +51,13 @@ async function run() {
 
       const filter = { email: email };
       const updateDoc = {
-        $setOnInsert: {
+        $set: {
           name: user.name,
           photo: user.photo,
           isSubscribed: user.isSubscribed || false,
           role: user.role || 'user', 
+        },
+        $setOnInsert: {
           createdAt: new Date()
         }
       };
@@ -63,6 +65,18 @@ async function run() {
       const options = { upsert: true };
       const result = await usersCollection.updateOne(filter, updateDoc, options);
       res.status(200).json(result);
+    });
+
+
+    // Get all users (for admin)
+    app.get('/user', async (req, res) => {
+      try {
+        const users = await usersCollection.find().toArray();
+        res.status(200).json(users);
+      } catch (err) {
+        console.error('Failed to fetch users:', err);
+        res.status(500).json({ message: 'Failed to fetch users' });
+      }
     });
 
 
@@ -94,24 +108,36 @@ async function run() {
     });
 
 
-    // Get Product API 
-    // app.get('/products', async (req, res) => {
-    //   const userEmail = req.query.email;
+    // Make admin API
+    app.patch('/user/admin/:id', async (req, res) => {
+      const id = req.params.id;
+      try {
+        const result = await usersCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { role: 'admin' } }
+        );
+        res.send(result);
+      } catch (err) {
+        console.error('Make Admin Error:', err);
+        res.status(500).json({ message: 'Failed to make admin' });
+      }
+    });
 
-    //   try {
-    //     const query = userEmail ? { ownerEmail: userEmail } : {};
 
-    //     const products = await techCollection
-    //       .find(query)
-    //       .sort({ createdAt: -1 })  // newest first
-    //       .toArray();
-
-    //     res.send(products);
-    //   } catch (error) {
-    //     console.error('Error fetching products:', error);
-    //     res.status(500).json({ message: 'Something went wrong' });
-    //   }
-    // });
+    // Make moderator API
+    app.patch('/user/moderator/:id', async (req, res) => {
+      const id = req.params.id;
+      try {
+        const result = await usersCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { role: 'moderator' } }
+        );
+        res.send(result);
+      } catch (err) {
+        console.error('Make Moderator Error:', err);
+        res.status(500).json({ message: 'Failed to make moderator' });
+      }
+    });
 
 
     // Get Products API (all, by user email, featured or reported)
