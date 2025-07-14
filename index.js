@@ -140,6 +140,53 @@ async function run() {
     });
 
 
+    // Piechart API
+    app.get('/admin-statistics', async (req, res) => {
+      try {
+        const productStatusPipeline = [
+          {
+            $group: {
+              _id: '$status',
+              count: { $sum: 1 }
+            }
+          },
+          {
+            $project: {
+              status: '$_id',
+              count: 1,
+              _id: 0
+            }
+          }
+        ];
+
+        const productStatusCountsFromDB = await techCollection.aggregate(productStatusPipeline).toArray();
+
+        // Ensure all statuses (accepted, pending, rejected) are represented
+        const allStatuses = ['accepted', 'pending', 'rejected'];
+        const productStatusCounts = allStatuses.map(status => {
+          const found = productStatusCountsFromDB.find(item => item.status === status);
+          return {
+            status,
+            count: found ? found.count : 0
+          };
+        });
+
+        const totalUsers = await usersCollection.estimatedDocumentCount();
+        const totalReviews = await reviewsCollection.estimatedDocumentCount();
+
+        res.send({
+          productStatusCounts,
+          totalUsers,
+          totalReviews
+        });
+      } catch (error) {
+        console.error('Error fetching admin stats:', error);
+        res.status(500).json({ message: 'Failed to load admin statistics' });
+      }
+    });
+
+
+
     // Get Products API (all, by user email, featured or reported)
     app.get('/products', async (req, res) => {
       const userEmail = req.query.email;
@@ -175,6 +222,10 @@ async function run() {
         const productData = req.body;
 
         productData.createdAt = new Date();
+
+        if (!productData.status) {
+          productData.status = 'pending';
+        }
 
         const result = await techCollection.insertOne(productData);
 
