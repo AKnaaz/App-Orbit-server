@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const admin = require("firebase-admin");
+
 
 dotenv.config();
 
@@ -13,6 +15,13 @@ const port = process.env.PORT || 3000;
 // middleware
 app.use(cors());
 app.use(express.json());
+
+
+var serviceAccount = require("./firebase-admin-key.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
 
 
 
@@ -39,6 +48,29 @@ async function run() {
     const reviewsCollection = db.collection('reviews'); //collection
     const couponCollection = db.collection('coupons'); //collection
 
+
+    // custom middlewares
+
+    const verifyFBToken = async(req, res, next) => {
+      const authHeader = req.headers.authorization;
+      if(!authHeader) {
+        return res.status(401).send({ message: "unauthorized access"})
+      }
+
+      const token = authHeader.split(" ")[1];
+      if(!token) {
+        return res.status(401).send({ message: "unauthorized access"})
+      }
+
+      try{
+        const decoded = await admin.auth().verifyIdToken(token);
+        req.decoded = decoded;
+        next();
+      }
+      catch (error) {
+        return res.status(403).send({ message: "forbidden access"})
+      }
+    };
 
 
     // Add or update user by email
@@ -331,7 +363,7 @@ async function run() {
 
 
     // Get All Reported Products
-    app.get('/reports', async (req, res) => {
+    app.get('/reports', verifyFBToken, async (req, res) => {
       try {
         const reports = await reportCollection
           .find()
