@@ -335,7 +335,7 @@ async function run() {
 
 
     // Update Product API
-    app.patch('/products/:id', async (req, res) => {
+    app.patch('/products/:id', verifyFBToken, async (req, res) => {
       const id = req.params.id;
       const updatedData = { ...req.body };
       delete updatedData._id;
@@ -562,7 +562,7 @@ async function run() {
 
 
     // Get all coupons
-    app.get('/coupons', verifyFBToken, async (req, res) => {
+    app.get('/coupons', async (req, res) => {
       try {
         const coupons = await couponCollection.find().sort({ createdAt: -1 }).toArray();
         res.send(coupons);
