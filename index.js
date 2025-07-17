@@ -4,7 +4,6 @@ const dotenv = require('dotenv');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const admin = require("firebase-admin");
 
-
 dotenv.config();
 
 const stripe = require('stripe')(process.env.PAYMENT_GATEWAY_KEY);
@@ -17,7 +16,7 @@ app.use(cors());
 app.use(express.json());
 
 
-var serviceAccount = require("./firebase-admin-key.json");
+const serviceAccount = require("./firebase-admin-key.json");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -50,19 +49,17 @@ async function run() {
 
 
     // custom middlewares
-
     const verifyFBToken = async(req, res, next) => {
       const authHeader = req.headers.authorization;
-      if(!authHeader) {
+      if(!authHeader){
+        return res.status(401).send({ message: "unauthorized access"})
+      }
+      const token = authHeader.split(' ')[1];
+      if(!token){
         return res.status(401).send({ message: "unauthorized access"})
       }
 
-      const token = authHeader.split(" ")[1];
-      if(!token) {
-        return res.status(401).send({ message: "unauthorized access"})
-      }
-
-      try{
+      try {
         const decoded = await admin.auth().verifyIdToken(token);
         req.decoded = decoded;
         next();
@@ -70,8 +67,7 @@ async function run() {
       catch (error) {
         return res.status(403).send({ message: "forbidden access"})
       }
-    };
-
+    }
 
     // Add or update user by email
     app.post('/user', async (req, res) => {
@@ -129,7 +125,7 @@ async function run() {
     });
 
     // Patch user subscription status
-    app.patch('/user/:email', async (req, res) => {
+    app.patch('/user/:email', verifyFBToken, async (req, res) => {
       const email = req.params.email;
       const updateDoc = {
         $set: {
@@ -142,7 +138,7 @@ async function run() {
 
 
     // Make admin API
-    app.patch('/user/admin/:id', async (req, res) => {
+    app.patch('/user/admin/:id', verifyFBToken, async (req, res) => {
       const id = req.params.id;
       try {
         const result = await usersCollection.updateOne(
@@ -158,7 +154,7 @@ async function run() {
 
 
     // Make moderator API
-    app.patch('/user/moderator/:id', async (req, res) => {
+    app.patch('/user/moderator/:id', verifyFBToken, async (req, res) => {
       const id = req.params.id;
       try {
         const result = await usersCollection.updateOne(
@@ -173,8 +169,33 @@ async function run() {
     });
 
 
+    // Get user's role by email
+    app.get('/user/role/:email', verifyFBToken, async (req, res) => {
+      const email = req.params.email;
+
+      try {
+        // Security check (optional but recommended)
+        if (req.decoded.email !== email) {
+          return res.status(403).json({ message: 'Forbidden: Email mismatch' });
+        }
+
+        const user = await usersCollection.findOne({ email });
+
+        if (user?.role) {
+          res.status(200).json({ role: user.role });
+        } else {
+          res.status(404).json({ message: 'User not found or role missing' });
+        }
+
+      } catch (err) {
+        console.error('Failed to fetch user role:', err);
+        res.status(500).json({ message: 'Failed to fetch role' });
+      }
+    });
+
+
     // Piechart API
-    app.get('/admin-statistics', async (req, res) => {
+    app.get('/admin-statistics', verifyFBToken, async (req, res) => {
       try {
         const productStatusPipeline = [
           {
@@ -250,7 +271,7 @@ async function run() {
 
 
     // Add Product API (POST)
-    app.post('/add-product', async (req, res) => {
+    app.post('/add-product', verifyFBToken, async (req, res) => {
       try {
         const productData = req.body;
 
@@ -325,7 +346,7 @@ async function run() {
 
 
     // PATCH /products/vote/:id
-    app.patch('/products/vote/:id', async (req, res) => {
+    app.patch('/products/vote/:id', verifyFBToken, async (req, res) => {
       const id = req.params.id;
       const { email } = req.body;
 
@@ -348,7 +369,7 @@ async function run() {
 
 
     // Report API
-    app.post('/report', async (req, res) => {
+    app.post('/report', verifyFBToken, async (req, res) => {
       try {
         const reportData = req.body;
         reportData.reportedAt = new Date();
@@ -363,7 +384,7 @@ async function run() {
 
 
     // Get All Reported Products
-    app.get('/reports', verifyFBToken, async (req, res) => {
+    app.get('/reports', async (req, res) => {
       try {
         const reports = await reportCollection
           .find()
@@ -399,7 +420,7 @@ async function run() {
 
 
     // Add Review API
-    app.post('/reviews', async (req, res) => {
+    app.post('/reviews', verifyFBToken, async (req, res) => {
       try {
         const review = req.body;
         review.createdAt = new Date();
@@ -430,7 +451,7 @@ async function run() {
 
 
     // Featured Product Patch API
-    app.patch('/products/feature/:id', async (req, res) => {
+    app.patch('/products/feature/:id', verifyFBToken, async (req, res) => {
       const id = req.params.id;
       try {
         const result = await techCollection.updateOne(
@@ -445,7 +466,7 @@ async function run() {
 
 
     // Featured Product Accept API
-    app.patch('/products/accept/:id', async (req, res) => {
+    app.patch('/products/accept/:id', verifyFBToken, async (req, res) => {
       const id = req.params.id;
       try {
         const result = await techCollection.updateOne(
@@ -460,7 +481,7 @@ async function run() {
 
 
     // Featured Product Reject API
-    app.patch('/products/reject/:id', async (req, res) => {
+    app.patch('/products/reject/:id', verifyFBToken, async (req, res) => {
       const id = req.params.id;
       try {
         const result = await techCollection.updateOne(
@@ -504,7 +525,7 @@ async function run() {
 
 
     // Add new coupon
-    app.post('/coupons', async (req, res) => {
+    app.post('/coupons', verifyFBToken, async (req, res) => {
       try {
         const coupon = req.body;
         coupon.createdAt = new Date();
@@ -544,7 +565,7 @@ async function run() {
 
     
     // Update coupon
-    app.put('/coupons/:id', async (req, res) => {
+    app.put('/coupons/:id', verifyFBToken, async (req, res) => {
       const { id } = req.params;
       const updatedData = req.body;
 
@@ -562,7 +583,7 @@ async function run() {
 
 
     // Delete coupon
-    app.delete('/coupons/:id', async (req, res) => {
+    app.delete('/coupons/:id', verifyFBToken, async (req, res) => {
       try {
         const id = req.params.id;
         const result = await couponCollection.deleteOne({ _id: new ObjectId(id) });
