@@ -15,6 +15,7 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+
 const decodedKey = Buffer.from(process.env.FB_SEVICE_KEY, 'base64').toString('utf8');
 const serviceAccount = JSON.parse(decodedKey);
 
